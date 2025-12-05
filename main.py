@@ -45,9 +45,17 @@ clock = pygame.time.Clock()
 
 pygame.display.set_caption("Snake")
 
+# every cell in the board is currently empty besides the cells the player spawns in
+emptyCells = [i for i in range(BOARD_WIDTH * BOARD_HEIGHT) if i > 2]
 
-# def spawnFood():
-# index = random()
+
+def spawnFood():
+    global emptyCells
+    index = random.randint(0, len(emptyCells))
+    foodX = emptyCells[index] % BOARD_WIDTH
+    foodY = emptyCells[index] // BOARD_HEIGHT
+    board[foodY][foodX] = Colors.FOOD.value
+    emptyCells.remove(emptyCells[index])
 
 
 def draw():
@@ -62,6 +70,7 @@ def draw():
             pygame.draw.rect(screen, board[y][x], rect)
 
 
+spawnFood()
 gameOver = False
 while not gameOver:
     for event in pygame.event.get():
@@ -79,14 +88,20 @@ while not gameOver:
 
     if playerX < 0 or playerY < 0 or playerX >= BOARD_WIDTH or playerY >= BOARD_HEIGHT:
         gameOver = True
+        break
 
     if board[playerY][playerX] == Colors.FOOD.value:
         score += 1
-    elif not board[playerY][playerX] == 0:
-        gameOver = True
+        spawnFood()
     else:
-        removedTail = tail.popleft()
-        board[removedTail[1]][removedTail[0]] = 0
+        emptyCells.remove(playerY * BOARD_WIDTH + playerX)
+
+        if not board[playerY][playerX] == 0:
+            gameOver = True
+        else:
+            (tailX, tailY) = tail.popleft()
+            board[tailY][tailX] = 0
+            emptyCells.append(tailY * BOARD_WIDTH + tailX)
 
     tail.append((playerX, playerY))
     board[playerY][playerX] = Colors.PLAYER.value
@@ -95,17 +110,17 @@ while not gameOver:
 
     keys = pygame.key.get_pressed()
 
-    if keys[pygame.K_w]:
+    if keys[pygame.K_w] and not playerDirection == Direction.DOWN:
         playerDirection = Direction.UP
-    elif keys[pygame.K_a]:
+    elif keys[pygame.K_a] and not playerDirection == Direction.RIGHT:
         playerDirection = Direction.LEFT
-    elif keys[pygame.K_d]:
+    elif keys[pygame.K_d] and not playerDirection == Direction.LEFT:
         playerDirection = Direction.RIGHT
-    elif keys[pygame.K_s]:
+    elif keys[pygame.K_s] and not playerDirection == Direction.UP:
         playerDirection = Direction.DOWN
 
     pygame.display.flip()
-    clock.tick(10)
+    clock.tick(15)
 
 pygame.quit()
 print(score)
