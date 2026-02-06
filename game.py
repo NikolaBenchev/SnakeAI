@@ -4,6 +4,7 @@ from enum import Enum
 from collections import namedtuple, deque
 import numpy as np
 
+GAME_SPEED = 40
 CELL_WIDTH = 50
 (SCREEN_WIDTH, SCREEN_HEIGHT) = (1000, 1000)
 
@@ -63,7 +64,7 @@ class SnakeGameAI:
         pygame.display.set_caption("Snake")
 
     def spawnFood(self):
-        index = random.randint(0, len(self.emptyCells))
+        index = random.randint(0, len(self.emptyCells) - 1)
         self.food = Point(self.emptyCells[index] % BOARD_WIDTH, self.emptyCells[index] // BOARD_HEIGHT)
         self.board[self.food.y][self.food.x] = Colors.FOOD.value
         self.emptyCells.remove(self.emptyCells[index])
@@ -145,7 +146,7 @@ class SnakeGameAI:
             self.direction = Direction.DOWN
 
         pygame.display.flip()
-        self.clock.tick(15)
+        self.clock.tick(GAME_SPEED)
         return reward, gameOver, self.score
 
     def isCollision(self, point=None):
@@ -153,8 +154,8 @@ class SnakeGameAI:
             point = self.playerPos
         if point.x < 0 or point.y < 0 or point.x >= BOARD_WIDTH or point.y >= BOARD_HEIGHT:
             return True
-        if not self.board[self.playerPos.y][self.playerPos.x] == 0 and not self.board[self.playerPos.y][
-                                                                               self.playerPos.x] == Colors.FOOD.value:
+        if not self.board[point.y][point.x] == 0 and not self.board[point.y][
+                                                             point.x] == Colors.FOOD.value:
             return True
 
         return False

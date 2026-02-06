@@ -3,21 +3,28 @@ import random
 from collections import deque
 import numpy as np
 from game import SnakeGameAI, Direction, Point, clockWiseDirections
+from model import Linear_QNet, QTrainer
+from torch.utils.tensorboard import SummaryWriter
+
+writer = SummaryWriter("runs/Snake")
 
 MAX_MEMORY = 100_000
 BATCH_SIZE = 1000
 LEARNING_RATE = 0.001
+MODEL_INPUT_LAYER_SIZE = 11  # number of parameters given at the start
+MODEL_HIDDEN_LAYER_SIZE = 256
+MODEL_OUTPUT_LAYER_SIZE = 3  # number of values returned after processing [1, 0, 0], ...etc.
 
 
 class Agent:
     def __init__(self):
         self.currentNumberOfGames = 0
         self.epsilon = 0  # randomness
-        self.gamma = 0  # discount rate
+        self.gamma = 0.9  # discount rate (must be <1)
         self.memory = deque(maxlen=MAX_MEMORY)
         # TODO: model, trainer
-        self.model = None
-        self.trainer = None
+        self.model = Linear_QNet(MODEL_INPUT_LAYER_SIZE, MODEL_HIDDEN_LAYER_SIZE, MODEL_OUTPUT_LAYER_SIZE)
+        self.trainer = QTrainer(self.model, LEARNING_RATE, self.gamma)
 
     def getState(self, game):
         surroundingPoints = {
@@ -61,10 +68,10 @@ class Agent:
 
         states, actions, rewards, nextStates, gameOvers = zip(*miniSample)
 
-        self.trainer.trainStep(self, states, actions, rewards, nextStates, gameOvers)
+        self.trainer.trainStep(states, actions, rewards, nextStates, gameOvers)
 
     def trainShortMemory(self, state, action, reward, nextState, gameOver):
-        self.trainer.trainStep(self, state, action, reward, nextState, gameOver)
+        self.trainer.trainStep(state, action, reward, nextState, gameOver)
 
     def getAction(self, state):
         self.epsilon = 80 - self.currentNumberOfGames
@@ -73,7 +80,7 @@ class Agent:
             move = random.randint(0, 2)
         else:
             stateTensor = torch.tensor(state, dtype=torch.float)
-            prediction = self.model.predict(stateTensor)
+            prediction = self.model(stateTensor)  # executes model.forward()
             move = torch.argmax(prediction).item()
 
         finalMove[move] = 1
@@ -107,11 +114,18 @@ def train():
 
             if score > currentRecord:
                 currentRecord = score
+                agent.model.save()
 
             print('Game:', agent.currentNumberOfGames, 'Score:', score, 'Record:', currentRecord)
 
-            # TODO: Plot
+            plotScores.append(score)
+            totalScore += score
+            averageScore = totalScore / agent.currentNumberOfGames
 
+            writer.add_scalar('Score', score, agent.currentNumberOfGames)
+            writer.add_scalar('Avg. Score', averageScore, agent.currentNumberOfGames)
 
 if __name__ == '__main__':
     train()
+
+writer.close()
